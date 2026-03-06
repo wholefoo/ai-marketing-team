@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useParams, useLocation, useSearch } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft,
   Download,
@@ -25,7 +25,8 @@ import {
   Clock,
   TrendingUp,
   Zap,
-  ChevronRight,
+  Lock,
+  CreditCard,
 } from "lucide-react";
 import type { Audit, AuditProgress, Finding, ActionItem, AgentAnalysis } from "@shared/schema";
 
@@ -180,6 +181,76 @@ function ScoreRing({ score, size = 120 }: { score: number; size?: number }) {
   );
 }
 
+function PaywallCard({ auditId, onUnlock }: { auditId: number; onUnlock: () => void }) {
+  const checkout = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/checkout", { auditId });
+      return res.json();
+    },
+    onSuccess: (data: { url?: string; alreadyPaid?: boolean }) => {
+      if (data.alreadyPaid) {
+        onUnlock();
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+  });
+
+  return (
+    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
+      <CardContent className="py-10 px-6 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+          <Lock className="w-7 h-7 text-primary" />
+        </div>
+        <h3 className="text-xl font-bold mb-2" data-testid="text-paywall-title">Unlock Full Report</h3>
+        <p className="text-muted-foreground text-sm max-w-md mx-auto mb-6 leading-relaxed">
+          Get access to detailed findings from all 5 AI agents, complete agent reports with strengths and weaknesses,
+          a prioritized 6-month action plan, and a downloadable professional PDF report.
+        </p>
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-baseline gap-1">
+            <span className="text-3xl font-bold">$29</span>
+            <span className="text-sm text-muted-foreground">one-time</span>
+          </div>
+          <Button
+            size="lg"
+            onClick={() => checkout.mutate()}
+            disabled={checkout.isPending}
+            className="min-w-[200px]"
+            data-testid="button-unlock-report"
+          >
+            {checkout.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <CreditCard className="w-4 h-4 mr-2" />
+            )}
+            {checkout.isPending ? "Redirecting..." : "Unlock Full Report"}
+          </Button>
+          <p className="text-xs text-muted-foreground">Secure payment via Stripe</p>
+        </div>
+
+        <Separator className="my-6" />
+
+        <div className="grid grid-cols-2 gap-4 text-left max-w-sm mx-auto">
+          {[
+            "Detailed AI agent reports",
+            "All severity findings",
+            "6-month action plan",
+            "Professional PDF report",
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+              <span className="text-xs text-muted-foreground">{item}</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function AgentSection({ analysis, config }: { analysis: AgentAnalysis; config: typeof AGENT_CONFIG[keyof typeof AGENT_CONFIG] }) {
   const Icon = config.icon;
 
@@ -258,10 +329,16 @@ function AgentSection({ analysis, config }: { analysis: AgentAnalysis; config: t
 export default function AuditPage() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
+  const searchString = useSearch();
   const [progress, setProgress] = useState<AuditProgress | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const [paymentVerified, setPaymentVerified] = useState(false);
 
   const auditId = parseInt(params.id || "0");
+
+  const searchParams = new URLSearchParams(searchString);
+  const paymentStatus = searchParams.get("payment");
+  const sessionId = searchParams.get("session_id");
 
   const { data: audit, refetch } = useQuery<Audit>({
     queryKey: ["/api/audits", auditId],
@@ -272,6 +349,26 @@ export default function AuditPage() {
       return 3000;
     },
   });
+
+  useEffect(() => {
+    if (paymentStatus === "success" && sessionId && auditId && !paymentVerified) {
+      fetch("/api/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, auditId }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.paid) {
+            setPaymentVerified(true);
+            queryClient.invalidateQueries({ queryKey: ["/api/audits", auditId] });
+            refetch();
+            window.history.replaceState({}, "", `/audit/${auditId}`);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [paymentStatus, sessionId, auditId, paymentVerified, refetch]);
 
   useEffect(() => {
     if (!auditId || audit?.status === "complete" || audit?.status === "error") return;
@@ -322,6 +419,11 @@ export default function AuditPage() {
     }
   };
 
+  const handleUnlock = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/audits", auditId] });
+    refetch();
+  };
+
   if (!audit) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -331,6 +433,7 @@ export default function AuditPage() {
   }
 
   const isInProgress = audit.status !== "complete" && audit.status !== "error";
+  const isPaid = audit.paid;
 
   if (isInProgress) {
     const displayProgress = progress || {
@@ -390,8 +493,8 @@ export default function AuditPage() {
   const allFindings = (audit.findings as Finding[]) || [];
   const criticalCount = allFindings.filter((f) => f.severity === "critical").length;
   const highCount = allFindings.filter((f) => f.severity === "high").length;
-  const mediumCount = allFindings.filter((f) => f.severity === "medium").length;
-  const lowCount = allFindings.filter((f) => f.severity === "low").length;
+  const mediumCount = isPaid ? allFindings.filter((f) => f.severity === "medium").length : 0;
+  const lowCount = isPaid ? allFindings.filter((f) => f.severity === "low").length : 0;
   const actionPlan = (audit.actionPlan as ActionItem[]) || [];
 
   const scoreItems = [
@@ -417,10 +520,17 @@ export default function AuditPage() {
               <p className="text-xs text-muted-foreground truncate">{audit.url}</p>
             </div>
           </div>
-          <Button onClick={handleDownloadPDF} disabled={downloading} data-testid="button-download-pdf">
-            {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-            {downloading ? "Generating..." : "Download PDF"}
-          </Button>
+          {isPaid ? (
+            <Button onClick={handleDownloadPDF} disabled={downloading} data-testid="button-download-pdf">
+              {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              {downloading ? "Generating..." : "Download PDF"}
+            </Button>
+          ) : (
+            <Badge variant="secondary" className="gap-1">
+              <Lock className="w-3 h-3" />
+              Free Preview
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -482,13 +592,21 @@ export default function AuditPage() {
           </Card>
           <Card>
             <CardContent className="py-4 px-4 text-center">
-              <div className="text-2xl font-bold text-amber-500">{mediumCount}</div>
+              {isPaid ? (
+                <div className="text-2xl font-bold text-amber-500">{mediumCount}</div>
+              ) : (
+                <Lock className="w-5 h-5 text-muted-foreground mx-auto" />
+              )}
               <div className="text-xs text-muted-foreground">Medium</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="py-4 px-4 text-center">
-              <div className="text-2xl font-bold text-blue-500">{lowCount}</div>
+              {isPaid ? (
+                <div className="text-2xl font-bold text-blue-500">{lowCount}</div>
+              ) : (
+                <Lock className="w-5 h-5 text-muted-foreground mx-auto" />
+              )}
               <div className="text-xs text-muted-foreground">Low</div>
             </CardContent>
           </Card>
@@ -497,9 +615,18 @@ export default function AuditPage() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList data-testid="tabs-audit-sections">
             <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
-            <TabsTrigger value="findings" data-testid="tab-findings">Findings</TabsTrigger>
-            <TabsTrigger value="agents" data-testid="tab-agents">Agent Reports</TabsTrigger>
-            <TabsTrigger value="actions" data-testid="tab-actions">Action Plan</TabsTrigger>
+            <TabsTrigger value="findings" data-testid="tab-findings" className="gap-1">
+              Findings
+              {!isPaid && <Lock className="w-3 h-3" />}
+            </TabsTrigger>
+            <TabsTrigger value="agents" data-testid="tab-agents" className="gap-1">
+              Agent Reports
+              {!isPaid && <Lock className="w-3 h-3" />}
+            </TabsTrigger>
+            <TabsTrigger value="actions" data-testid="tab-actions" className="gap-1">
+              Action Plan
+              {!isPaid && <Lock className="w-3 h-3" />}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -542,102 +669,121 @@ export default function AuditPage() {
                 </CardContent>
               </Card>
             )}
+
+            {!isPaid && (
+              <PaywallCard auditId={auditId} onUnlock={handleUnlock} />
+            )}
           </TabsContent>
 
           <TabsContent value="findings" className="space-y-4">
-            {["critical", "high", "medium", "low"].map((severity) => {
-              const items = allFindings.filter((f) => f.severity === severity);
-              if (!items.length) return null;
-              return (
-                <Card key={severity}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                      {getSeverityIcon(severity)}
-                      <CardTitle className="text-base capitalize">{severity} ({items.length})</CardTitle>
-                    </div>
+            {isPaid ? (
+              <>
+                {["critical", "high", "medium", "low"].map((severity) => {
+                  const items = allFindings.filter((f) => f.severity === severity);
+                  if (!items.length) return null;
+                  return (
+                    <Card key={severity}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center gap-2">
+                          {getSeverityIcon(severity)}
+                          <CardTitle className="text-base capitalize">{severity} ({items.length})</CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {items.map((finding, i) => (
+                            <div key={i}>
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="text-sm font-medium">{finding.title}</span>
+                                <Badge variant="outline" className="text-xs">{finding.category}</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground mb-1">{finding.description}</p>
+                              <p className="text-xs text-primary">
+                                {finding.recommendation}
+                              </p>
+                              {i < items.length - 1 && <Separator className="mt-3" />}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </>
+            ) : (
+              <PaywallCard auditId={auditId} onUnlock={handleUnlock} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="agents" className="space-y-6">
+            {isPaid ? (
+              <>
+                {Object.entries(AGENT_CONFIG).map(([key, config]) => {
+                  const analysisKey = `${key}Analysis` as keyof Audit;
+                  const analysis = audit[analysisKey] as AgentAnalysis | null;
+                  if (!analysis) return null;
+                  return (
+                    <Card key={key}>
+                      <CardContent className="pt-6">
+                        <AgentSection analysis={analysis} config={config} />
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </>
+            ) : (
+              <PaywallCard auditId={auditId} onUnlock={handleUnlock} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="actions">
+            {isPaid ? (
+              actionPlan.length > 0 ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">6-Month Prioritized Action Plan</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {items.map((finding, i) => (
-                        <div key={i}>
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="text-sm font-medium">{finding.title}</span>
-                            <Badge variant="outline" className="text-xs">{finding.category}</Badge>
+                      {actionPlan.map((item, i) => (
+                        <div key={i} data-testid={`card-action-${i}`}>
+                          <div className="flex items-start gap-3">
+                            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-xs font-bold text-primary">{item.priority || i + 1}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-semibold mb-1">{item.title}</h4>
+                              <p className="text-xs text-muted-foreground mb-2">{item.description}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="outline" className="text-xs">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  {item.timeline}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  Impact: {item.impact}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  Effort: {item.effort}
+                                </Badge>
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-xs text-muted-foreground mb-1">{finding.description}</p>
-                          <p className="text-xs text-primary flex items-center gap-1">
-                            <ChevronRight className="w-3 h-3" />
-                            {finding.recommendation}
-                          </p>
-                          {i < items.length - 1 && <Separator className="mt-3" />}
+                          {i < actionPlan.length - 1 && <Separator className="mt-4" />}
                         </div>
                       ))}
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })}
-          </TabsContent>
-
-          <TabsContent value="agents" className="space-y-6">
-            {Object.entries(AGENT_CONFIG).map(([key, config]) => {
-              const analysisKey = `${key}Analysis` as keyof Audit;
-              const analysis = audit[analysisKey] as AgentAnalysis | null;
-              if (!analysis) return null;
-              return (
-                <Card key={key}>
-                  <CardContent className="pt-6">
-                    <AgentSection analysis={analysis} config={config} />
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Map className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No action plan available</p>
                   </CardContent>
                 </Card>
-              );
-            })}
-          </TabsContent>
-
-          <TabsContent value="actions">
-            {actionPlan.length > 0 ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">6-Month Prioritized Action Plan</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {actionPlan.map((item, i) => (
-                      <div key={i} data-testid={`card-action-${i}`}>
-                        <div className="flex items-start gap-3">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-xs font-bold text-primary">{item.priority || i + 1}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold mb-1">{item.title}</h4>
-                            <p className="text-xs text-muted-foreground mb-2">{item.description}</p>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className="text-xs">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {item.timeline}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                Impact: {item.impact}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                Effort: {item.effort}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                        {i < actionPlan.length - 1 && <Separator className="mt-4" />}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              )
             ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Map className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No action plan available</p>
-                </CardContent>
-              </Card>
+              <PaywallCard auditId={auditId} onUnlock={handleUnlock} />
             )}
           </TabsContent>
         </Tabs>

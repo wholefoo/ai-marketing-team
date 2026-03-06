@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -24,6 +24,8 @@ export const audits = pgTable("audits", {
   executiveSummary: text("executive_summary"),
   actionPlan: jsonb("action_plan"),
   scrapedData: jsonb("scraped_data"),
+  paid: boolean("paid").default(false).notNull(),
+  stripeSessionId: text("stripe_session_id"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
