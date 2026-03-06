@@ -42,6 +42,60 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  const siteUrl = process.env.REPLIT_DOMAINS
+    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+    : "https://ai-market-audit.replit.app";
+
+  app.get("/robots.txt", (_req, res) => {
+    res.type("text/plain").send(
+      [
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin",
+        "Disallow: /api/",
+        "",
+        "User-agent: GPTBot",
+        "Allow: /",
+        "Disallow: /admin",
+        "Disallow: /api/",
+        "",
+        "User-agent: ChatGPT-User",
+        "Allow: /",
+        "",
+        "User-agent: Google-Extended",
+        "Allow: /",
+        "",
+        "User-agent: Anthropic-AI",
+        "Allow: /",
+        "",
+        "User-agent: ClaudeBot",
+        "Allow: /",
+        "",
+        "User-agent: Cohere-AI",
+        "Allow: /",
+        "",
+        "User-agent: PerplexityBot",
+        "Allow: /",
+        "",
+        `Sitemap: ${siteUrl}/sitemap.xml`,
+      ].join("\n")
+    );
+  });
+
+  app.get("/sitemap.xml", (_req, res) => {
+    const lastmod = new Date().toISOString().split("T")[0];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${siteUrl}/</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`;
+    res.type("application/xml").send(xml);
+  });
+
   app.post("/api/audits", async (req, res) => {
     try {
       const parsed = auditRequestSchema.safeParse(req.body);
