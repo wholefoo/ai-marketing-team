@@ -1,0 +1,67 @@
+Since the transcript highlights a multi-agent orchestration as the "secret sauce," your Replit app should be designed to handle these specialized tasks in parallel to mimic that "marketing team" feel.
+
+Here are the specific **system instructions** (the `skill.md` logic from the transcript) you can feed into the Replit Agent for each of those five sub-agents to ensure the output is professional and high-value.
+
+---
+
+### Phase 1: The Orchestration Logic
+
+Before the sub-agents launch, the main application must perform a **Discovery** phase.
+
+* 
+**Fetch URL:** Scrape the target website.
+
+
+* 
+**Detect Business Type:** Categorize as SaaS, E-commerce, Local Business, or Course/Creator.
+
+
+* 
+**Identify Key Pages:** Locate the homepage, pricing, and "about" pages for a deeper scan.
+
+
+
+---
+
+### Phase 2: Individual Agent Instructions
+
+Copy these "personalities" into your Replit prompt to define how the AI should think for each category:
+
+| Agent | Core Objective & Instructions |
+| --- | --- |
+| **Agent 1: Content & Messaging** | Analyze brand voice and clarity. Identify "Critical" inconsistencies (e.g., mismatched pricing across different pages).
+
+ |
+| **Agent 2: Conversion (CRO)** | Audit the user journey. Check for friction in the booking/buying process and evaluate call-to-action (CTA) effectiveness.
+
+ |
+| **Agent 3: SEO & Discovery** | Scan for technical gaps like missing metadata, schema markup (JSON-LD), or lack of an FAQ page.
+
+ |
+| **Agent 4: Competitive Intelligence** | Identify 3 tiers of competitors: Direct, Indirect, and Aspirational. Compare social proof and pricing.
+
+ |
+| **Agent 5: Strategy Synthesis** | Take findings from Agents 1–4 and create a 6-month roadmap. Categorize actions into "Quick Wins" vs. "Strategic Gains".
+
+ |
+
+---
+
+### Phase 3: The "Money-Maker" PDF Output
+
+The final step of your Replit app should be to synthesize these into a report that follows the transcript's winning formula:
+
+* 
+**The Hook:** A 0–100 Marketing Score to provide immediate context.
+
+
+* 
+**The Value:** Detailed "Key Findings" with severity ratings (Critical to Low).
+
+
+* 
+**The Retainer Pitch:** A prioritized action plan that makes the business want to hire you to fix the issues.
+
+
+
+**Would you like me to generate the specific Python code for the "PDF Generation" module of this app?**

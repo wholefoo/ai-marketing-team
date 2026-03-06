@@ -1,0 +1,73 @@
+To build the PDF generation module for your Replit app, you can use **FPDF2**. It is a lightweight, clean library for Python that allows you to create professional-looking layouts without the overhead of heavy HTML-to-PDF converters.
+
+The following code structure is designed to follow the "Marketing Audit" format described in the transcript, including the overall score, severity-coded findings, and the strategic action plan.
+
+### Python PDF Module (`pdf_generator.py`)
+
+```python
+from fpdf import FPDF
+
+class MarketingAuditPDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 15)
+        self.cell(0, 10, 'Marketing Audit Report', 0, 1, 'C')
+        self.ln(5)
+
+    def chapter_title(self, label, type='normal'):
+        self.set_font('Arial', 'B', 12)
+        if type == 'critical':
+            self.set_text_color(220, 53, 69) # Red
+        else:
+            self.set_text_color(0, 0, 0)
+        self.cell(0, 10, label, 0, 1, 'L')
+        self.ln(2)
+        self.set_text_color(0, 0, 0)
+
+    def chapter_body(self, body):
+        self.set_font('Arial', '', 10)
+        self.multi_cell(0, 5, body)
+        self.ln()
+
+def generate_audit_report(data, filename="audit_report.pdf"):
+    pdf = MarketingAuditPDF()
+    pdf.add_page()
+    
+    # [cite_start]1. Executive Summary & Score [cite: 50, 381]
+    pdf.chapter_title(f"Overall Marketing Score: {data['score']}/100")
+    pdf.chapter_body(data['summary'])
+    
+    # [cite_start]2. Key Findings by Severity [cite: 56, 394]
+    pdf.chapter_title("Critical Findings", type='critical')
+    for finding in data['critical_findings']:
+        pdf.chapter_body(f"- {finding}")
+        
+    # [cite_start]3. Prioritized Action Plan [cite: 422, 447]
+    pdf.add_page()
+    pdf.chapter_title("Strategic Roadmap (1-6 Months)")
+    pdf.chapter_body(f"Quick Wins: {data['quick_wins']}")
+    pdf.chapter_body(f"Medium-Term: {data['medium_term']}")
+    pdf.chapter_body(f"Strategic: {data['strategic']}")
+    
+    pdf.output(filename)
+    return filename
+
+```
+
+---
+
+### Implementation Details
+
+* 
+**The Scoring System:** The transcript suggests an overall score (e.g., 64/100) followed by an executive summary to give the client immediate context.
+
+
+* 
+**Color-Coded Severity:** In the code above, the `chapter_title` function uses RGB values to highlight "Critical" findings in red, mirroring the visual urgency needed to land a client.
+
+
+* 
+**Competitive Landscape:** You can extend this by adding a table that compares the client's social proof and pricing against the "Aspirational" competitors identified by the AI agents.
+
+
+
+Would you like me to write the **Scraping logic** (using BeautifulSoup) to help your agents gather the initial data from the target website?
