@@ -1,0 +1,81 @@
+This is a powerhouse of a tool. Based on the transcript provided, the core value lies in the **multi-agent orchestration**—having separate "experts" look at different parts of a business simultaneously and then synthesizing that into a high-value PDF.
+
+Since you're building this in **Replit**, you can leverage the **Replit Agent** to build a full-stack web application that mimics this "Claude Code" functionality but with a clean UI.
+
+Here is a comprehensive prompt you can copy and paste directly into the Replit Agent to build this.
+
+---
+
+### The Replit Agent Prompt
+
+**"Build a professional 'AI Marketing Audit & Strategy' Web Application.**
+
+**Core Functionality:**
+
+* 
+**Website Scraping:** Implement a tool (like BeautifulSoup or Playwright) to scrape a target URL's content, metadata, and structure.
+
+
+* 
+**Multi-Agent Analysis:** Create an orchestration layer that sends the scraped data to five specialized AI agents (using the Anthropic or OpenAI API) running in parallel:
+
+
+1. 
+**Content & Messaging Agent:** Evaluates brand voice and copy effectiveness.
+
+
+2. 
+**Conversion Optimization Agent:** Identifies friction points in the user journey.
+
+
+3. 
+**SEO & Discoverability Agent:** Audits metadata, technical SEO, and keyword presence.
+
+
+4. 
+**Competitive Intelligence Agent:** Searches for and compares the site against local/direct competitors.
+
+
+5. 
+**Strategy & Action Plan Agent:** Synthesizes findings into a prioritized roadmap.
+
+
+
+
+
+**UI/UX Requirements:**
+
+* **Dashboard:** A clean, modern landing page with a single URL input field.
+* 
+**Live Progress:** A 'terminal-style' or visual progress bar showing the 5 agents working in parallel.
+
+
+* 
+**Audit View:** Display the results in an organized dashboard with an 'Overall Marketing Score' (0-100) and severity-coded findings (Critical, High, Medium, Low).
+
+
+* 
+**PDF Generation:** A button to generate a professional, formatted PDF report that includes an Executive Summary, Score Breakdowns, and a 6-month prioritized Action Plan.
+
+
+
+**Tech Stack Preferences:**
+
+* **Backend:** Python (FastAPI or Flask).
+* **Frontend:** React with Tailwind CSS for a professional 'agency' look.
+* 
+**PDF Library:** ReportLab or WeasyPrint to handle the report generation.
+
+
+
+**Goal:** This app should allow a user to enter a URL and receive a client-ready marketing audit in under 3 minutes."
+
+---
+
+### Why This Works
+
+The transcript emphasizes that businesses are "desperate for marketing help" but can't afford traditional $10k/month agencies. By framing the Replit prompt around **"Client-Ready Reports"** and **"Severity-Coded Findings,"** you are directly building the "money-making" engine described in the video.
+
+The "Parallel Sub-Agent" architecture is the secret sauce here—it prevents the AI from giving generic advice by forcing it to look through five specific lenses simultaneously.
+
+**Would you like me to break down the specific system instructions (the `skill.md` logic) for any of those five individual agents?**
