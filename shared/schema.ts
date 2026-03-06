@@ -26,6 +26,8 @@ export const audits = pgTable("audits", {
   scrapedData: jsonb("scraped_data"),
   paid: boolean("paid").default(false).notNull(),
   stripeSessionId: text("stripe_session_id"),
+  customerName: text("customer_name"),
+  customerEmail: text("customer_email"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
@@ -39,6 +41,8 @@ export type InsertAudit = z.infer<typeof insertAuditSchema>;
 
 export const auditRequestSchema = z.object({
   url: z.string().url("Please enter a valid URL"),
+  customerName: z.string().min(1, "Name is required"),
+  customerEmail: z.string().email("Please enter a valid email"),
 });
 
 export type AuditRequest = z.infer<typeof auditRequestSchema>;

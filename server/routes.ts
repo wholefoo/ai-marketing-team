@@ -26,6 +26,8 @@ export async function registerRoutes(
 
       const audit = await storage.createAudit({
         url: parsed.data.url,
+        customerName: parsed.data.customerName,
+        customerEmail: parsed.data.customerEmail,
         status: "pending",
       });
 
@@ -228,6 +230,84 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Payment verification error:", error);
       return res.status(500).json({ error: "Failed to verify payment" });
+    }
+  });
+
+  app.post("/api/admin/login", async (req, res) => {
+    try {
+      const { password } = req.body;
+      if (!password) return res.status(400).json({ error: "Password is required" });
+
+      if (password !== process.env.ADMIN_PASSWORD) {
+        return res.status(401).json({ error: "Invalid password" });
+      }
+
+      const token = Buffer.from(`admin:${Date.now()}`).toString("base64");
+      return res.json({ token });
+    } catch (error) {
+      return res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  function verifyAdmin(req: any, res: any, next: any) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const token = authHeader.slice(7);
+    try {
+      const decoded = Buffer.from(token, "base64").toString("utf-8");
+      if (!decoded.startsWith("admin:")) {
+        return res.status(401).json({ error: "Invalid token" });
+      }
+      const timestamp = parseInt(decoded.split(":")[1]);
+      const hoursSinceLogin = (Date.now() - timestamp) / (1000 * 60 * 60);
+      if (hoursSinceLogin > 24) {
+        return res.status(401).json({ error: "Token expired" });
+      }
+      next();
+    } catch {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+  }
+
+  app.get("/api/admin/dashboard", verifyAdmin, async (req, res) => {
+    try {
+      const allAudits = await storage.getAllAudits();
+
+      const totalAudits = allAudits.length;
+      const completedAudits = allAudits.filter(a => a.status === "complete").length;
+      const paidAudits = allAudits.filter(a => a.paid).length;
+      const totalRevenue = paidAudits * 99;
+      const errorAudits = allAudits.filter(a => a.status === "error").length;
+      const pendingAudits = allAudits.filter(a => a.status !== "complete" && a.status !== "error").length;
+
+      const auditSummaries = allAudits.map(a => ({
+        id: a.id,
+        url: a.url,
+        businessName: a.businessName,
+        businessType: a.businessType,
+        status: a.status,
+        overallScore: a.overallScore,
+        paid: a.paid,
+        customerName: a.customerName,
+        customerEmail: a.customerEmail,
+        createdAt: a.createdAt,
+      }));
+
+      return res.json({
+        stats: {
+          totalAudits,
+          completedAudits,
+          paidAudits,
+          totalRevenue,
+          errorAudits,
+          pendingAudits,
+        },
+        audits: auditSummaries,
+      });
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to fetch dashboard data" });
     }
   });
 

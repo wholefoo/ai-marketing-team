@@ -22,6 +22,8 @@ import {
   Shield,
   Target,
   Brain,
+  User,
+  Mail,
 } from "lucide-react";
 import type { Audit } from "@shared/schema";
 
@@ -49,6 +51,8 @@ function getStatusBadge(status: string) {
 
 export default function Home() {
   const [url, setUrl] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -58,8 +62,8 @@ export default function Home() {
   });
 
   const startAudit = useMutation({
-    mutationFn: async (url: string) => {
-      const res = await apiRequest("POST", "/api/audits", { url });
+    mutationFn: async (data: { url: string; customerName: string; customerEmail: string }) => {
+      const res = await apiRequest("POST", "/api/audits", data);
       return res.json();
     },
     onSuccess: (data: Audit) => {
@@ -77,13 +81,20 @@ export default function Home() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url.trim()) return;
+    if (!url.trim() || !name.trim() || !email.trim()) {
+      toast({
+        title: "All fields required",
+        description: "Please enter your name, email, and the website URL.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     let normalizedUrl = url.trim();
     if (!normalizedUrl.startsWith("http")) {
       normalizedUrl = "https://" + normalizedUrl;
     }
-    startAudit.mutate(normalizedUrl);
+    startAudit.mutate({ url: normalizedUrl, customerName: name.trim(), customerEmail: email.trim() });
   };
 
   const features = [
@@ -141,9 +152,33 @@ export default function Home() {
 
             <form
               onSubmit={handleSubmit}
-              className="max-w-xl mx-auto mt-8"
+              className="max-w-xl mx-auto mt-8 space-y-3"
               data-testid="form-audit"
             >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-name"
+                  />
+                </div>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    placeholder="Your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-email"
+                  />
+                </div>
+              </div>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -158,7 +193,7 @@ export default function Home() {
                 </div>
                 <Button
                   type="submit"
-                  disabled={startAudit.isPending || !url.trim()}
+                  disabled={startAudit.isPending || !url.trim() || !name.trim() || !email.trim()}
                   data-testid="button-start-audit"
                 >
                   {startAudit.isPending ? (
