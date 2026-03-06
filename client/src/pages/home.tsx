@@ -119,7 +119,7 @@ export default function Home() {
               <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-lg font-semibold tracking-tight">MarketAudit AI</span>
+              <span className="text-lg font-semibold tracking-tight">AI Market Audit</span>
             </div>
 
             <h1

@@ -1,4 +1,4 @@
-# MarketAudit AI
+# AI Market Audit
 
 AI-Powered Marketing Audit & Strategy Web Application
 
