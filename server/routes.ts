@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { createHmac } from "crypto";
 import { storage } from "./storage";
 import { scrapeWebsite } from "./scraper";
 import { runAgent, generateExecutiveSummary, detectBusinessType } from "./agents";
@@ -9,6 +10,30 @@ import type { Finding, AgentAnalysis, AuditProgress } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+
+const ADMIN_TOKEN_SECRET = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || "fallback-secret";
+
+function signAdminToken(timestamp: number): string {
+  const payload = `admin:${timestamp}`;
+  const signature = createHmac("sha256", ADMIN_TOKEN_SECRET).update(payload).digest("hex");
+  return Buffer.from(`${payload}:${signature}`).toString("base64");
+}
+
+function verifyAdminToken(token: string): boolean {
+  try {
+    const decoded = Buffer.from(token, "base64").toString("utf-8");
+    const parts = decoded.split(":");
+    if (parts.length !== 3 || parts[0] !== "admin") return false;
+    const timestamp = parseInt(parts[1]);
+    const providedSig = parts[2];
+    const expectedSig = createHmac("sha256", ADMIN_TOKEN_SECRET).update(`admin:${timestamp}`).digest("hex");
+    if (providedSig !== expectedSig) return false;
+    const hoursSinceLogin = (Date.now() - timestamp) / (1000 * 60 * 60);
+    return hoursSinceLogin <= 24;
+  } catch {
+    return false;
+  }
+}
 
 const auditProgress = new Map<number, AuditProgress>();
 
@@ -64,13 +89,21 @@ export async function registerRoutes(
     }
   });
 
+  function isValidAdminToken(req: any): boolean {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return false;
+    return verifyAdminToken(authHeader.slice(7));
+  }
+
   app.get("/api/audits/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const audit = await storage.getAudit(id);
       if (!audit) return res.status(404).json({ error: "Audit not found" });
 
-      if (audit.status === "complete" && !audit.paid) {
+      const isAdmin = isValidAdminToken(req);
+
+      if (audit.status === "complete" && !audit.paid && !isAdmin) {
         const gatedAudit = {
           ...audit,
           contentAnalysis: null,
@@ -122,7 +155,7 @@ export async function registerRoutes(
       const audit = await storage.getAudit(id);
       if (!audit) return res.status(404).json({ error: "Audit not found" });
       if (audit.status !== "complete") return res.status(400).json({ error: "Audit not complete" });
-      if (!audit.paid) return res.status(403).json({ error: "Payment required to download PDF" });
+      if (!audit.paid && !isValidAdminToken(req)) return res.status(403).json({ error: "Payment required to download PDF" });
 
       const pdfBuffer = await generatePDF(audit);
 
@@ -242,7 +275,8 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Invalid password" });
       }
 
-      const token = Buffer.from(`admin:${Date.now()}`).toString("base64");
+      const timestamp = Date.now();
+      const token = signAdminToken(timestamp);
       return res.json({ token });
     } catch (error) {
       return res.status(500).json({ error: "Login failed" });
@@ -250,24 +284,10 @@ export async function registerRoutes(
   });
 
   function verifyAdmin(req: any, res: any, next: any) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    const token = authHeader.slice(7);
-    try {
-      const decoded = Buffer.from(token, "base64").toString("utf-8");
-      if (!decoded.startsWith("admin:")) {
-        return res.status(401).json({ error: "Invalid token" });
-      }
-      const timestamp = parseInt(decoded.split(":")[1]);
-      const hoursSinceLogin = (Date.now() - timestamp) / (1000 * 60 * 60);
-      if (hoursSinceLogin > 24) {
-        return res.status(401).json({ error: "Token expired" });
-      }
+    if (isValidAdminToken(req)) {
       next();
-    } catch {
-      return res.status(401).json({ error: "Invalid token" });
+    } else {
+      return res.status(401).json({ error: "Unauthorized" });
     }
   }
 

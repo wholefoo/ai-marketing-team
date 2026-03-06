@@ -326,6 +326,14 @@ function AgentSection({ analysis, config }: { analysis: AgentAnalysis; config: t
   );
 }
 
+function getAdminToken(): string | null {
+  try {
+    return sessionStorage.getItem("admin_token");
+  } catch {
+    return null;
+  }
+}
+
 export default function AuditPage() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
@@ -335,6 +343,7 @@ export default function AuditPage() {
   const [paymentVerified, setPaymentVerified] = useState(false);
 
   const auditId = parseInt(params.id || "0");
+  const adminToken = getAdminToken();
 
   const searchParams = new URLSearchParams(searchString);
   const paymentStatus = searchParams.get("payment");
@@ -343,6 +352,18 @@ export default function AuditPage() {
   const { data: audit, refetch } = useQuery<Audit>({
     queryKey: ["/api/audits", auditId],
     enabled: auditId > 0,
+    queryFn: async () => {
+      const headers: Record<string, string> = {};
+      if (adminToken) {
+        headers["Authorization"] = `Bearer ${adminToken}`;
+      }
+      const res = await fetch(`/api/audits/${auditId}`, {
+        credentials: "include",
+        headers,
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
     refetchInterval: (query) => {
       const data = query.state.data as Audit | undefined;
       if (data?.status === "complete" || data?.status === "error") return false;
@@ -401,7 +422,11 @@ export default function AuditPage() {
   const handleDownloadPDF = async () => {
     setDownloading(true);
     try {
-      const res = await fetch(`/api/audits/${auditId}/pdf`);
+      const headers: Record<string, string> = {};
+      if (adminToken) {
+        headers["Authorization"] = `Bearer ${adminToken}`;
+      }
+      const res = await fetch(`/api/audits/${auditId}/pdf`, { headers });
       if (!res.ok) {
         throw new Error("Failed to generate PDF");
       }
@@ -433,7 +458,8 @@ export default function AuditPage() {
   }
 
   const isInProgress = audit.status !== "complete" && audit.status !== "error";
-  const isPaid = audit.paid;
+  const isAdmin = !!adminToken;
+  const isPaid = audit.paid || isAdmin;
 
   if (isInProgress) {
     const displayProgress = progress || {
