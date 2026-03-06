@@ -121,12 +121,14 @@ async function runAuditPipeline(auditId: number, url: string) {
 
   try {
     progress.status = "scraping";
-    progress.phase = "Scraping website...";
+    progress.phase = "Phase 1: Discovery - Scraping website & key pages...";
     await storage.updateAudit(auditId, { status: "scraping" });
 
     const scrapedData = await scrapeWebsite(url);
     const businessType = detectBusinessType(scrapedData);
     const businessName = scrapedData.title.split("|")[0].split("-")[0].trim() || url;
+
+    progress.phase = `Phase 1: Complete - Detected ${businessType} business, found ${scrapedData.keyPages.length} key pages`;
 
     await storage.updateAudit(auditId, {
       scrapedData: scrapedData as any,
@@ -136,14 +138,14 @@ async function runAuditPipeline(auditId: number, url: string) {
     });
 
     progress.status = "analyzing";
-    progress.phase = "Running AI agents in parallel...";
+    progress.phase = "Phase 2: Running 5 specialized AI agents in parallel...";
 
     const agentTypes = ["content", "conversion", "seo", "competitive", "strategy"] as const;
 
     const agentPromises = agentTypes.map(async (type) => {
       progress.agents[type] = "running";
       try {
-        const result = await runAgent(type, scrapedData);
+        const result = await runAgent(type, scrapedData, businessType);
         progress.agents[type] = "complete";
         return { type, result };
       } catch (error) {
@@ -190,9 +192,9 @@ async function runAuditPipeline(auditId: number, url: string) {
       findings: allFindings as any,
     });
 
-    progress.phase = "Generating executive summary...";
+    progress.phase = "Phase 3: Synthesizing results & building action plan...";
 
-    const { summary, actionPlan } = await generateExecutiveSummary(url, analyses, overallScore);
+    const { summary, actionPlan } = await generateExecutiveSummary(url, businessType, analyses, overallScore);
 
     await storage.updateAudit(auditId, {
       executiveSummary: summary,

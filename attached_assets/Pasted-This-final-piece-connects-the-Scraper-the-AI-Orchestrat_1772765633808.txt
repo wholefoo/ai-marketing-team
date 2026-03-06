@@ -1,0 +1,78 @@
+This final piece connects the **Scraper**, the **AI Orchestrator**, and the **PDF Generator** into a single workflow. In this setup, the "Main Application" acts as the manager, launching five parallel sub-agents just as described in the transcript.
+
+### The Main Application (`main.py`)
+
+This script uses an asynchronous approach to ensure all five marketing agents run simultaneously, significantly reducing the time it takes to generate the final report.
+
+```python
+import asyncio
+from scraper import scrape_marketing_data
+from pdf_generator import generate_audit_report
+# Assuming you have a wrapper for your LLM (OpenAI or Anthropic)
+from ai_agents import launch_marketing_agent 
+
+async def run_full_marketing_audit(target_url):
+    print(f"--- Starting Discovery for {target_url} ---")
+    
+    # [cite_start]Phase 1: Discovery & Pre-analysis [cite: 228]
+    raw_data = scrape_marketing_data(target_url)
+    if "error" in raw_data:
+        return f"Error: {raw_data['error']}"
+
+    # [cite_start]Phase 2: Parallel Sub-Agent Execution [cite: 242]
+    [cite_start]print("Launching 5 parallel marketing sub-agents...") [cite: 37]
+    
+    # [cite_start]We define the 5 specific roles mentioned in the transcript [cite: 247-251]
+    tasks = [
+        launch_marketing_agent("Content & Messaging", raw_data),
+        launch_marketing_agent("Conversion Optimization", raw_data),
+        launch_marketing_agent("SEO & Discoverability", raw_data),
+        launch_marketing_agent("Competitive Intelligence", raw_data),
+        launch_marketing_agent("Technical Strategy", raw_data)
+    ]
+    
+    # [cite_start]Run all agents at once [cite: 243, 244]
+    agent_results = await asyncio.gather(*tasks)
+    
+    # [cite_start]Phase 3: Synthesis & Scoring [cite: 328]
+    # One final call to synthesize the 5 reports into a single cohesive audit
+    final_synthesis = await launch_marketing_agent("Lead Strategist", agent_results)
+    
+    # [cite_start]Phase 4: Generate Client-Ready PDF [cite: 7, 348]
+    report_path = generate_audit_report(final_synthesis)
+    
+    [cite_start]print(f"Success! Audit complete. Report saved as: {report_path}") [cite: 369]
+    return report_path
+
+# To run in Replit:
+# [cite_start]asyncio.run(run_full_marketing_audit("https://knobillaesthetics.com")) [cite: 170]
+
+```
+
+---
+
+### Key Workflow Features
+
+* 
+**Parallel Execution**: By using `asyncio.gather`, your Replit app won't wait for one agent to finish before starting the next, mimicking the "parallel agents" feature of Claude Code.
+
+
+* 
+**Severity Tagging**: The "Lead Strategist" agent is instructed to look for "Critical" issues—like the Botox pricing inconsistency mentioned in the transcript—which serve as the primary "hook" to land a paying client.
+
+
+* 
+**The Action Plan**: The final output includes a prioritized 6-month roadmap, categorized into "Quick Wins" and "Strategic Gains," allowing you to position yourself as a long-term consultant .
+
+
+
+### How to use this in Replit
+
+1. **Add your API Key**: Go to the "Secrets" tab in Replit and add your `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`.
+2. **Install Dependencies**: Replit will usually auto-detect these, but you can run `pip install fpdf2 beautifulsoup4 requests openai` in the shell.
+3. 
+**Run the Script**: Once you trigger the audit, the app will scrape the site, run the agents, and spit out a `marketing_report.pdf` in your file sidebar.
+
+
+
+**Would you like me to help you draft the "Email Pitch" that you would send along with this PDF to potential clients?**

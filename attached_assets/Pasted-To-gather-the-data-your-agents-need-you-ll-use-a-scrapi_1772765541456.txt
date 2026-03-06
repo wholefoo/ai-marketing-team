@@ -1,0 +1,72 @@
+To gather the data your agents need, you’ll use a scraping layer. According to the transcript, the first step is to "fetch the target URL" and "detect the business type". This allows the AI to distinguish between a SaaS company like Calendly and a local service like a Med Spa.
+
+Below is the **Scraping & Discovery** logic using `BeautifulSoup` and `requests`. This script pulls the raw text, metadata, and links required for the sub-agents to perform their audits.
+
+### Python Scraping Module (`scraper.py`)
+
+```python
+import requests
+from bs4 import BeautifulSoup
+import json
+
+def scrape_marketing_data(url):
+    try:
+        # User-agent header to avoid being blocked by simple scrapers
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 1. Metadata Discovery (Crucial for Agent 3: SEO)
+        metadata = {
+            "title": soup.title.string if soup.title else "No Title Found",
+            [cite_start]"description": soup.find("meta", attrs={"name": "description"}).get("content") if soup.find("meta", attrs={"name": "description"}) else "Zero metadata description across entire site", # [cite: 439]
+            "keywords": soup.find("meta", attrs={"name": "keywords"}).get("content") if soup.find("meta", attrs={"name": "keywords"}) else "None"
+        }
+        
+        # 2. Content & Messaging (For Agent 1)
+        # We grab all headings and body text to analyze brand voice
+        paragraphs = [p.get_text().strip() for p in soup.find_all('p') if len(p.get_text()) > 20]
+        headings = [h.get_text().strip() for h in soup.find_all(['h1', 'h2', 'h3'])]
+        
+        # 3. Conversion Elements (For Agent 2)
+        # Look for buttons or links that act as Call to Actions (CTAs)
+        ctas = [a.get_text().strip() for a in soup.find_all('a', class_=True) if any(word in a.get_text().lower() for word in ['book', 'buy', 'schedule', 'contact', 'get started'])]
+        
+        return {
+            "url": url,
+            "metadata": metadata,
+            "main_headings": headings[:10],
+            "body_sample": paragraphs[:15],
+            "cta_buttons": list(set(ctas))
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+# Example usage for the Replit Agent to test
+# data = scrape_marketing_data("https://www.example.com")
+
+```
+
+---
+
+### How the Agents Use This Data
+
+Once this data is scraped, it flows into the **Parallel Sub-Agent** phase described in the transcript:
+
+* 
+**The Content Agent** compares the `body_sample` to the `metadata` to check for "inconsistencies" in messaging.
+
+
+* 
+**The SEO Agent** specifically flags if the `description` is missing, which is a "critical finding" for search engine click-through rates.
+
+
+* 
+**The Conversion Agent** looks at the `cta_buttons` to see if the user journey is clear or if there is "zero social proof" visible in the initial scan.
+
+
+
+**Would you like me to create the final "Main Application" script that ties the Scraper, AI Agents, and PDF Generator together?**
