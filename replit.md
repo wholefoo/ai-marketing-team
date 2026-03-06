@@ -22,11 +22,11 @@ Users enter a website URL, and the app scrapes the site, then runs 5 specialized
 5. Severity-coded findings (Critical, High, Medium, Low)
 6. Executive summary and 6-month action plan
 7. Professional PDF report generation
-8. **Paywall:** Overview (scores, executive summary, critical/high findings) is free; detailed findings, agent reports, action plan, and PDF download require $29 one-time Stripe payment
+8. **Paywall:** Overview (scores, executive summary, critical/high findings) is free; detailed findings, agent reports, action plan, and PDF download require $99 one-time Stripe payment
 
 ## Paywall Architecture
 - Free tier: Overall score, score breakdown, executive summary, critical & high findings
-- Paid tier ($29): Full findings (all severities), detailed agent reports, 6-month action plan, PDF download
+- Paid tier ($99): Full findings (all severities), detailed agent reports, 6-month action plan, PDF download
 - Payment flow: Stripe Checkout (one-time payment) -> verify-payment endpoint -> unlock audit
 - Server-side gating: /api/audits/:id strips gated data for unpaid audits
 - Webhook-based fulfillment: checkout.session.completed marks audit as paid

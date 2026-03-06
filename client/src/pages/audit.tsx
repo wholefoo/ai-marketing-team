@@ -211,7 +211,7 @@ function PaywallCard({ auditId, onUnlock }: { auditId: number; onUnlock: () => v
         </p>
         <div className="flex flex-col items-center gap-3">
           <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-bold">$29</span>
+            <span className="text-3xl font-bold">$99</span>
             <span className="text-sm text-muted-foreground">one-time</span>
           </div>
           <Button
