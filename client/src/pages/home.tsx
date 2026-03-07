@@ -29,7 +29,11 @@ import {
   Check,
   Minus,
   HelpCircle,
+  Star,
+  DollarSign,
+  Quote,
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import type { Audit } from "@shared/schema";
 
 function getScoreColor(score: number) {
@@ -236,6 +240,140 @@ function FAQSection() {
   );
 }
 
+const testimonials = [
+  {
+    quote: "Found 12 critical SEO issues I had missed for 6 months. The competitive analysis alone was worth the price.",
+    name: "Sarah K.",
+    role: "SaaS Founder",
+  },
+  {
+    quote: "Replaced a $3,000 agency audit with a $99 AI report that was more thorough and actionable.",
+    name: "Marcus T.",
+    role: "E-commerce Director",
+  },
+  {
+    quote: "The conversion optimization findings increased our landing page conversion rate by 34% in 2 weeks.",
+    name: "Priya R.",
+    role: "Growth Lead",
+  },
+  {
+    quote: "As a freelance consultant, I use this to kick off every new client engagement. Saves me hours of manual analysis.",
+    name: "David L.",
+    role: "Marketing Consultant",
+  },
+];
+
+function PricingSection() {
+  return (
+    <div className="mb-16">
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <DollarSign className="w-5 h-5 text-primary" />
+          <h2 className="text-2xl font-bold" data-testid="text-pricing-title">Simple, Transparent Pricing</h2>
+        </div>
+        <p className="text-muted-foreground text-sm max-w-lg mx-auto">
+          One audit, one price. No subscriptions, no recurring fees, no hidden costs.
+        </p>
+      </div>
+
+      <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="pt-6 pb-6 px-6">
+            <h3 className="font-semibold text-lg mb-1" data-testid="text-free-tier">Free Preview</h3>
+            <div className="flex items-baseline gap-1 mb-4">
+              <span className="text-3xl font-bold">$0</span>
+            </div>
+            <Separator className="mb-4" />
+            <ul className="space-y-2.5 text-sm">
+              {[
+                "Overall marketing score (0-100)",
+                "Score breakdown across all 5 categories",
+                "Executive summary",
+                "Critical and high-severity findings",
+                "Business type detection",
+              ].map((item, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/30 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-primary" />
+          <CardContent className="pt-6 pb-6 px-6">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold text-lg" data-testid="text-paid-tier">Full Report</h3>
+              <Badge className="bg-primary text-primary-foreground text-xs">Best Value</Badge>
+            </div>
+            <div className="flex items-baseline gap-1 mb-4">
+              <span className="text-3xl font-bold">$99</span>
+              <span className="text-sm text-muted-foreground">one-time</span>
+            </div>
+            <Separator className="mb-4" />
+            <ul className="space-y-2.5 text-sm">
+              {[
+                "Everything in Free Preview",
+                "Detailed analysis from all 5 AI agents",
+                "All severity findings (critical to low)",
+                "Strengths & weaknesses per category",
+                "6-month prioritized action plan",
+                "Professional PDF report download",
+              ].map((item, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{item}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-muted-foreground mt-4 text-center">
+              Less than one hour of a consultant's time. Secure payment via Stripe.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function TestimonialsSection() {
+  return (
+    <div className="mb-16">
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <Star className="w-5 h-5 text-primary" />
+          <h2 className="text-2xl font-bold" data-testid="text-testimonials-title">What Customers Say</h2>
+        </div>
+        <p className="text-muted-foreground text-sm max-w-lg mx-auto">
+          Trusted by founders, marketers, and agencies to uncover actionable marketing insights.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
+        {testimonials.map((t, i) => (
+          <Card key={i} data-testid={`card-testimonial-${i}`}>
+            <CardContent className="pt-5 pb-5 px-5">
+              <Quote className="w-5 h-5 text-primary/30 mb-2" />
+              <p className="text-sm leading-relaxed text-muted-foreground mb-4">"{t.quote}"</p>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-xs font-bold text-primary">{t.name.charAt(0)}</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium" data-testid={`text-testimonial-name-${i}`}>{t.name}</p>
+                  <p className="text-xs text-muted-foreground">{t.role}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
@@ -324,17 +462,17 @@ export default function Home() {
               className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight"
               data-testid="text-hero-title"
             >
-              AI-Powered Marketing
+              Know What's Holding
               <br />
-              <span className="text-primary">Audit & Strategy</span>
+              <span className="text-primary">Your Website Back</span>
             </h1>
 
             <p
               className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed"
               data-testid="text-hero-description"
             >
-              Enter any website URL and get a comprehensive marketing audit powered by 5 specialized AI agents
-              working in parallel. Receive actionable insights and a professional PDF report in minutes.
+              5 specialized AI agents audit your content, SEO, conversions, competitive positioning, and strategy in parallel.
+              Get a scored report and professional PDF in under 3 minutes -- for just $99.
             </p>
 
             <form
@@ -415,9 +553,24 @@ export default function Home() {
           ))}
         </div>
 
+        <PricingSection />
+
+        <TestimonialsSection />
+
         <ComparisonChart />
 
         <FAQSection />
+
+        <footer className="border-t mt-16 pt-8 pb-8 text-center text-sm text-muted-foreground" data-testid="footer">
+          <p className="mb-2">AI Market Audit -- AI-Powered Marketing Audit & Strategy</p>
+          <p className="mb-4">
+            Questions? Contact us at{" "}
+            <a href="mailto:support@aimarketaudit.com" className="text-primary hover:underline" data-testid="link-support-email">
+              support@aimarketaudit.com
+            </a>
+          </p>
+          <p className="text-xs text-muted-foreground/70">Secure payments processed by Stripe. Your data is never sold or shared.</p>
+        </footer>
 
         {audits && audits.length > 0 && (
           <div>

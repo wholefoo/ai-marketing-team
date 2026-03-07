@@ -42,9 +42,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  const siteUrl = process.env.REPLIT_DOMAINS
-    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
-    : "https://ai-market-audit.replit.app";
+  const siteUrl = "https://aimarketaudit.com";
 
   app.get("/robots.txt", (_req, res) => {
     res.type("text/plain").send(
