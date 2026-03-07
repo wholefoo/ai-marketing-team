@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 import {
   Globe,
   Zap,
@@ -32,6 +33,13 @@ import {
   Star,
   DollarSign,
   Quote,
+  ShieldCheck,
+  Lock,
+  Briefcase,
+  ShoppingCart,
+  Palette,
+  Building2,
+  Rocket,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import type { Audit } from "@shared/schema";
@@ -334,6 +342,21 @@ function PricingSection() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mt-8 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2" data-testid="trust-guarantee">
+          <ShieldCheck className="w-4 h-4 text-emerald-500" />
+          <span>7-day satisfaction guarantee</span>
+        </div>
+        <div className="flex items-center gap-2" data-testid="trust-stripe">
+          <Lock className="w-4 h-4 text-primary" />
+          <span>Secured by Stripe</span>
+        </div>
+        <div className="flex items-center gap-2" data-testid="trust-ssl">
+          <Shield className="w-4 h-4 text-primary" />
+          <span>SSL encrypted</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -369,6 +392,91 @@ function TestimonialsSection() {
             </CardContent>
           </Card>
         ))}
+      </div>
+    </div>
+  );
+}
+
+const personas = [
+  {
+    icon: <Rocket className="w-5 h-5" />,
+    title: "SaaS Founders",
+    description: "Identify what's preventing your product page from converting trial signups. Benchmark against competitors and get a clear growth roadmap.",
+  },
+  {
+    icon: <ShoppingCart className="w-5 h-5" />,
+    title: "E-commerce Managers",
+    description: "Find conversion killers in your product pages, checkout flow, and category structure. Improve SEO to drive organic traffic.",
+  },
+  {
+    icon: <Briefcase className="w-5 h-5" />,
+    title: "Marketing Consultants",
+    description: "Kick off client engagements with a data-driven baseline. Use the professional PDF report to demonstrate value from day one.",
+  },
+  {
+    icon: <Building2 className="w-5 h-5" />,
+    title: "Agency Owners",
+    description: "Quickly audit prospect websites during the sales process. Show potential clients exactly what needs fixing before they sign.",
+  },
+  {
+    icon: <Palette className="w-5 h-5" />,
+    title: "Freelancers & Creators",
+    description: "Get expert-level marketing feedback on your portfolio or personal brand site without hiring an expensive consultant.",
+  },
+  {
+    icon: <Target className="w-5 h-5" />,
+    title: "Growth Teams",
+    description: "Prioritize your marketing backlog with severity-coded findings. Focus your team on the changes that will move the needle most.",
+  },
+];
+
+function WhoThisIsFor() {
+  return (
+    <div className="mb-16">
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <User className="w-5 h-5 text-primary" />
+          <h2 className="text-2xl font-bold" data-testid="text-personas-title">Who This Is For</h2>
+        </div>
+        <p className="text-muted-foreground text-sm max-w-lg mx-auto">
+          Whether you are a solo founder or running a marketing team, AI Market Audit gives you the data you need to make better decisions.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+        {personas.map((p, i) => (
+          <Card key={i} data-testid={`card-persona-${i}`}>
+            <CardContent className="pt-5 pb-5 px-5">
+              <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center text-primary mb-3">
+                {p.icon}
+              </div>
+              <h3 className="font-semibold text-sm mb-1">{p.title}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{p.description}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SocialProofBar() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 py-4 mb-8 text-sm text-muted-foreground" data-testid="social-proof-bar">
+      <div className="flex items-center gap-2">
+        <BarChart3 className="w-4 h-4 text-primary" />
+        <span className="font-semibold text-foreground">150+</span>
+        <span>audits completed</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Star className="w-4 h-4 text-amber-500" />
+        <span className="font-semibold text-foreground">4.8/5</span>
+        <span>average rating</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Clock className="w-4 h-4 text-primary" />
+        <span className="font-semibold text-foreground">&lt;3 min</span>
+        <span>average delivery</span>
       </div>
     </div>
   );
@@ -535,6 +643,8 @@ export default function Home() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 pb-12">
+        <SocialProofBar />
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
           {features.map((feature, i) => (
             <Card key={i} className="hover-elevate">
@@ -553,6 +663,8 @@ export default function Home() {
           ))}
         </div>
 
+        <WhoThisIsFor />
+
         <PricingSection />
 
         <TestimonialsSection />
@@ -562,13 +674,20 @@ export default function Home() {
         <FAQSection />
 
         <footer className="border-t mt-16 pt-8 pb-8 text-center text-sm text-muted-foreground" data-testid="footer">
-          <p className="mb-2">AI Market Audit -- AI-Powered Marketing Audit & Strategy</p>
+          <p className="mb-3">AI Market Audit -- AI-Powered Marketing Audit & Strategy</p>
           <p className="mb-4">
             Questions? Contact us at{" "}
             <a href="mailto:support@aimarketaudit.com" className="text-primary hover:underline" data-testid="link-support-email">
               support@aimarketaudit.com
             </a>
           </p>
+          <div className="flex items-center justify-center gap-4 mb-4 text-xs">
+            <Link href="/privacy" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-privacy">Privacy Policy</Link>
+            <span className="text-muted-foreground/40">|</span>
+            <Link href="/terms" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-terms">Terms of Service</Link>
+            <span className="text-muted-foreground/40">|</span>
+            <Link href="/refund" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-refund">Refund Policy</Link>
+          </div>
           <p className="text-xs text-muted-foreground/70">Secure payments processed by Stripe. Your data is never sold or shared.</p>
         </footer>
 

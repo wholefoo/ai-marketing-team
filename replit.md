@@ -40,10 +40,27 @@ Users enter their name, email, and a website URL. The app scrapes the site, then
 - Search: Filter by name, email, URL, or business name
 - Auto-refreshes every 10 seconds
 
+## Homepage Sections (order)
+Hero -> Social Proof Bar -> Feature Cards -> Who This Is For -> Pricing (with trust badges) -> Testimonials -> Comparison Chart -> FAQ -> Footer (with legal links) -> Recent Audits
+
+## SEO / AEO
+- robots.txt with AI crawler rules (GPTBot, ClaudeBot, PerplexityBot, etc.)
+- sitemap.xml (homepage + /privacy + /terms + /refund)
+- JSON-LD schemas: SoftwareApplication, Organization, WebSite, FAQPage, Review (4 testimonials)
+- Canonical URL: https://aimarketaudit.com everywhere
+- Google Analytics: G-28JKW0YJV8
+- Enriched noscript fallback with full static HTML replica of all homepage sections
+
+## Legal Pages
+- /privacy - Privacy Policy
+- /terms - Terms of Service
+- /refund - Refund Policy
+- All linked in homepage footer
+
 ## File Structure
 - `shared/schema.ts` - Database schema (audits table with customer info, payment fields) + TypeScript types
 - `server/db.ts` - Database connection
-- `server/routes.ts` - API routes + audit pipeline + Stripe checkout + admin endpoints
+- `server/routes.ts` - API routes + audit pipeline + Stripe checkout + admin endpoints + robots.txt + sitemap.xml
 - `server/stripeClient.ts` - Stripe client initialization (via Replit connector)
 - `server/webhookHandlers.ts` - Stripe webhook processing + payment fulfillment
 - `server/seed-products.ts` - Script to create Stripe product/price ($99 Full Marketing Audit Report)
@@ -54,7 +71,11 @@ Users enter their name, email, and a website URL. The app scrapes the site, then
 - `client/src/pages/home.tsx` - Landing page with name/email/URL input + recent audits
 - `client/src/pages/audit.tsx` - Audit results dashboard with paywall + progress view
 - `client/src/pages/admin.tsx` - Admin dashboard with login, stats, and audit table
-- `client/src/App.tsx` - Router setup
+- `client/src/pages/privacy.tsx` - Privacy Policy page
+- `client/src/pages/terms.tsx` - Terms of Service page
+- `client/src/pages/refund.tsx` - Refund Policy page
+- `client/src/App.tsx` - Router setup (/, /audit/:id, /admin, /privacy, /terms, /refund)
+- `client/index.html` - Meta tags, OG tags, JSON-LD schemas, noscript fallback
 
 ## API Endpoints
 - `POST /api/audits` - Start a new audit (requires url, customerName, customerEmail)
