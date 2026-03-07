@@ -16,7 +16,119 @@ interface BlogPostDraft {
   tags: string[];
 }
 
-export async function researchAndWritePost(topic: string): Promise<BlogPostDraft> {
+export interface GenerateOptions {
+  topic: string;
+  niche?: string;
+  contentType?: string;
+  targetAudience?: string;
+  tone?: string;
+  wordCount?: string;
+}
+
+export const NICHES = [
+  { id: "saas", label: "SaaS & Software", keywords: "software companies, SaaS startups, product-led growth" },
+  { id: "ecommerce", label: "E-commerce & DTC", keywords: "online stores, direct-to-consumer brands, Shopify merchants" },
+  { id: "agency", label: "Marketing Agencies", keywords: "digital agencies, freelance marketers, consultants" },
+  { id: "local", label: "Local Business", keywords: "brick-and-mortar, local SEO, service businesses, restaurants" },
+  { id: "b2b", label: "B2B & Enterprise", keywords: "B2B companies, enterprise sales, lead generation" },
+  { id: "health", label: "Health & Wellness", keywords: "healthcare, fitness, wellness brands, clinics" },
+  { id: "finance", label: "Finance & Fintech", keywords: "financial services, fintech, insurance, lending" },
+  { id: "realestate", label: "Real Estate", keywords: "real estate agents, property management, listings" },
+  { id: "education", label: "Education & Coaching", keywords: "online courses, coaching, edtech, training" },
+  { id: "nonprofit", label: "Nonprofit & Advocacy", keywords: "nonprofits, charities, fundraising, advocacy" },
+];
+
+export const CONTENT_TYPES = [
+  { id: "howto", label: "How-To Guide", description: "Step-by-step actionable instructions" },
+  { id: "listicle", label: "Listicle", description: "Numbered list of tips, tools, or strategies" },
+  { id: "casestudy", label: "Case Study Analysis", description: "Deep-dive analysis of a real scenario" },
+  { id: "comparison", label: "Comparison / vs.", description: "Side-by-side comparison of approaches or tools" },
+  { id: "mistakes", label: "Common Mistakes", description: "Pitfalls to avoid with expert solutions" },
+  { id: "trends", label: "Trends & Predictions", description: "Industry trends and forward-looking insights" },
+  { id: "checklist", label: "Checklist / Audit", description: "Comprehensive checklist readers can follow" },
+  { id: "datadriven", label: "Data-Driven Analysis", description: "Statistics and research-backed insights" },
+  { id: "beginner", label: "Beginner's Guide", description: "Foundational explainer for newcomers" },
+  { id: "advanced", label: "Advanced Strategy", description: "Expert-level tactics for experienced marketers" },
+];
+
+export const TARGET_AUDIENCES = [
+  { id: "founder", label: "Startup Founders / CEOs" },
+  { id: "marketer", label: "Marketing Managers" },
+  { id: "smallbiz", label: "Small Business Owners" },
+  { id: "freelancer", label: "Freelancers & Solopreneurs" },
+  { id: "cmo", label: "CMOs / VPs of Marketing" },
+  { id: "developer", label: "Developer-Marketers" },
+  { id: "ecomowner", label: "E-commerce Store Owners" },
+  { id: "agencyowner", label: "Agency Owners" },
+];
+
+export const TONES = [
+  { id: "educational", label: "Educational & Authoritative" },
+  { id: "conversational", label: "Conversational & Relatable" },
+  { id: "urgent", label: "Urgent & Action-Oriented" },
+  { id: "analytical", label: "Analytical & Data-Driven" },
+  { id: "storytelling", label: "Storytelling & Narrative" },
+];
+
+export async function suggestTrendingTopics(niche?: string, count: number = 8): Promise<{ topic: string; angle: string; searchPotential: string }[]> {
+  const nicheContext = niche
+    ? `Focus on the "${NICHES.find(n => n.id === niche)?.label || niche}" niche (${NICHES.find(n => n.id === niche)?.keywords || niche}).`
+    : "Cover a diverse mix of business niches.";
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 2048,
+    system: `You are a content strategist for AI Market Audit, an AI-powered marketing audit tool ($99/audit). Suggest trending, high-search-potential blog topics that would attract businesses needing marketing audits. ${nicheContext}`,
+    messages: [{
+      role: "user",
+      content: `Suggest ${count} trending blog post topics that would perform well for SEO and attract potential customers for a marketing audit tool. For each topic, include:
+- A specific, compelling topic title
+- A unique angle or hook that makes it stand out
+- An estimate of search potential (high/medium/low)
+
+Focus on topics that are currently trending or have evergreen search demand. Think about pain points, seasonal trends, algorithm updates, industry shifts, and common marketing challenges.
+
+Return as a JSON array:
+[{"topic": "...", "angle": "...", "searchPotential": "high|medium|low"}]
+
+Return ONLY the JSON array, no other text.`
+    }],
+  });
+
+  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) return [];
+
+  try {
+    return JSON.parse(jsonMatch[0]);
+  } catch {
+    return [];
+  }
+}
+
+export async function researchAndWritePost(options: GenerateOptions | string): Promise<BlogPostDraft> {
+  const opts: GenerateOptions = typeof options === "string" ? { topic: options } : options;
+  const { topic, niche, contentType, targetAudience, tone, wordCount } = opts;
+
+  const nicheInfo = niche ? NICHES.find(n => n.id === niche) : null;
+  const contentTypeInfo = contentType ? CONTENT_TYPES.find(c => c.id === contentType) : null;
+  const audienceInfo = targetAudience ? TARGET_AUDIENCES.find(a => a.id === targetAudience) : null;
+  const toneInfo = tone ? TONES.find(t => t.id === tone) : null;
+  const targetWords = wordCount === "short" ? "800-1200" : wordCount === "long" ? "2000-3000" : "1200-2000";
+
+  const nicheDirective = nicheInfo
+    ? `Target niche: ${nicheInfo.label} (${nicheInfo.keywords}). Tailor examples, pain points, and language specifically to this industry.`
+    : "";
+  const contentTypeDirective = contentTypeInfo
+    ? `Content format: ${contentTypeInfo.label} - ${contentTypeInfo.description}. Structure the article accordingly.`
+    : "";
+  const audienceDirective = audienceInfo
+    ? `Target reader: ${audienceInfo.label}. Write at their level of expertise and address their specific concerns and decision-making context.`
+    : "";
+  const toneDirective = toneInfo
+    ? `Writing tone: ${toneInfo.label}. Maintain this tone consistently throughout the article.`
+    : "";
+
   const systemPrompt = `You are a senior content marketing strategist and SEO copywriter for AI Market Audit (https://aimarketaudit.com), an AI-powered marketing audit tool that costs $99 per audit.
 
 The tool works by having 5 specialized AI agents analyze a website in parallel:
@@ -33,10 +145,15 @@ Your job is to research a business pain point topic and write a comprehensive, S
 - Demonstrates expertise and builds trust (E-E-A-T)
 - Naturally shows how AI Market Audit helps solve the problem
 - Includes a clear call-to-action to try the tool
-- Is 1200-2000 words long
+- Is ${targetWords} words long
 - Uses proper heading hierarchy (H2, H3) with keyword-rich headings
 - Includes actionable takeaways readers can implement immediately
 - Avoids salesy language; focuses on providing genuine value first
+
+${nicheDirective}
+${contentTypeDirective}
+${audienceDirective}
+${toneDirective}
 
 Do NOT use emojis anywhere in the article.
 

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft,
   Lock,
@@ -29,6 +30,13 @@ import {
   EyeOff,
   Sparkles,
   X as XIcon,
+  Lightbulb,
+  Target,
+  FileText,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
 } from "lucide-react";
 import type { BlogPost } from "@shared/schema";
 
@@ -142,6 +150,26 @@ function LoginView({ onLogin }: { onLogin: (token: string) => void }) {
   );
 }
 
+interface ConfigOption {
+  id: string;
+  label: string;
+  description?: string;
+  keywords?: string;
+}
+
+interface TrendingTopic {
+  topic: string;
+  angle: string;
+  searchPotential: string;
+}
+
+interface BlogConfig {
+  niches: ConfigOption[];
+  contentTypes: ConfigOption[];
+  targetAudiences: ConfigOption[];
+  tones: ConfigOption[];
+}
+
 function BlogManagement({ token }: { token: string }) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,9 +178,31 @@ function BlogManagement({ token }: { token: string }) {
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [editForm, setEditForm] = useState({ title: "", slug: "", excerpt: "", metaDescription: "", content: "", category: "", tags: "" });
 
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [niche, setNiche] = useState("");
+  const [contentType, setContentType] = useState("");
+  const [targetAudience, setTargetAudience] = useState("");
+  const [tone, setTone] = useState("");
+  const [wordCount, setWordCount] = useState("");
+
+  const [config, setConfig] = useState<BlogConfig | null>(null);
+  const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
+  const [loadingTrending, setLoadingTrending] = useState(false);
+  const [showTrending, setShowTrending] = useState(false);
+
   useEffect(() => {
     fetchPosts();
+    fetchConfig();
   }, [token]);
+
+  const fetchConfig = async () => {
+    try {
+      const res = await fetch("/api/admin/blog/config", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setConfig(await res.json());
+    } catch {}
+  };
 
   const fetchPosts = async () => {
     try {
@@ -165,6 +215,23 @@ function BlogManagement({ token }: { token: string }) {
     }
   };
 
+  const fetchTrendingTopics = async () => {
+    setLoadingTrending(true);
+    setShowTrending(true);
+    try {
+      const res = await fetch("/api/admin/blog/trending", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ niche: niche && niche !== "any" ? niche : undefined, count: 8 }),
+      });
+      if (res.ok) {
+        setTrendingTopics(await res.json());
+      }
+    } catch {} finally {
+      setLoadingTrending(false);
+    }
+  };
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!topic.trim() || generating) return;
@@ -173,7 +240,14 @@ function BlogManagement({ token }: { token: string }) {
       const res = await fetch("/api/admin/blog", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ topic: topic.trim() }),
+        body: JSON.stringify({
+          topic: topic.trim(),
+          niche: niche && niche !== "any" ? niche : undefined,
+          contentType: contentType && contentType !== "any" ? contentType : undefined,
+          targetAudience: targetAudience && targetAudience !== "any" ? targetAudience : undefined,
+          tone: tone && tone !== "any" ? tone : undefined,
+          wordCount: wordCount && wordCount !== "standard" ? wordCount : undefined,
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -246,37 +320,257 @@ function BlogManagement({ token }: { token: string }) {
     } catch {}
   };
 
+  const selectTrendingTopic = (t: TrendingTopic) => {
+    setTopic(t.topic);
+    setShowTrending(false);
+  };
+
+  const getSearchBadgeColor = (potential: string) => {
+    if (potential === "high") return "bg-emerald-600 text-white";
+    if (potential === "medium") return "bg-amber-500 text-white";
+    return "bg-muted text-muted-foreground";
+  };
+
+  const activeFilters = [
+    niche && niche !== "any" ? niche : "",
+    contentType && contentType !== "any" ? contentType : "",
+    targetAudience && targetAudience !== "any" ? targetAudience : "",
+    tone && tone !== "any" ? tone : "",
+    wordCount && wordCount !== "standard" ? wordCount : "",
+  ].filter(Boolean).length;
+
   return (
     <div>
-      <Card className="mb-6">
+      <Card className="mb-4">
         <CardContent className="pt-5 pb-5 px-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-sm">Generate New Post</h3>
-          </div>
-          <form onSubmit={handleGenerate} className="flex gap-2">
-            <Input
-              placeholder="Enter a business pain point or topic to research..."
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              disabled={generating}
-              className="flex-1"
-              data-testid="input-blog-topic"
-            />
-            <Button type="submit" disabled={generating || !topic.trim()} data-testid="button-generate-post">
-              {generating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                  Generating...
-                </>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <h3 className="font-semibold text-sm">Generate New Post</h3>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-7"
+              onClick={fetchTrendingTopics}
+              disabled={loadingTrending}
+              data-testid="button-trending-topics"
+            >
+              {loadingTrending ? (
+                <Loader2 className="w-3 h-3 animate-spin mr-1" />
               ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Generate
-                </>
+                <Lightbulb className="w-3 h-3 mr-1" />
               )}
+              {loadingTrending ? "Finding trends..." : "Suggest Topics"}
             </Button>
+          </div>
+
+          {showTrending && (
+            <div className="mb-4 rounded-lg border bg-muted/30 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-medium">
+                    Trending Topics{niche && config ? ` - ${config.niches.find(n => n.id === niche)?.label}` : ""}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={fetchTrendingTopics}
+                    disabled={loadingTrending}
+                    data-testid="button-refresh-trending"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${loadingTrending ? "animate-spin" : ""}`} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setShowTrending(false)}
+                  >
+                    <XIcon className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+              {loadingTrending ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary mr-2" />
+                  <span className="text-xs text-muted-foreground">AI is researching trending topics...</span>
+                </div>
+              ) : trendingTopics.length > 0 ? (
+                <div className="grid gap-1.5">
+                  {trendingTopics.map((t, i) => (
+                    <button
+                      key={i}
+                      onClick={() => selectTrendingTopic(t)}
+                      className="text-left p-2.5 rounded-md border bg-background hover:bg-primary/5 hover:border-primary/30 transition-colors group"
+                      data-testid={`button-trending-${i}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium group-hover:text-primary transition-colors block">{t.topic}</span>
+                          <span className="text-[11px] text-muted-foreground mt-0.5 block">{t.angle}</span>
+                        </div>
+                        <Badge className={`text-[10px] shrink-0 ${getSearchBadgeColor(t.searchPotential)}`}>
+                          {t.searchPotential}
+                        </Badge>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-4">No trending topics found. Try again.</p>
+              )}
+            </div>
+          )}
+
+          <form onSubmit={handleGenerate}>
+            <div className="flex gap-2 mb-2">
+              <Input
+                placeholder="Enter a business pain point or topic to research..."
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                disabled={generating}
+                className="flex-1"
+                data-testid="input-blog-topic"
+              />
+              <Button type="submit" disabled={generating || !topic.trim()} data-testid="button-generate-post">
+                {generating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Generate
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
+              data-testid="button-toggle-advanced"
+            >
+              {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              Advanced Options
+              {activeFilters > 0 && (
+                <Badge variant="secondary" className="text-[10px] h-4 px-1.5 ml-1">{activeFilters} active</Badge>
+              )}
+            </button>
+
+            {showAdvanced && config && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-1 pb-1">
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                    <Target className="w-3 h-3 inline mr-0.5 -mt-0.5" /> Niche
+                  </label>
+                  <Select value={niche} onValueChange={setNiche}>
+                    <SelectTrigger className="h-8 text-xs" data-testid="select-niche">
+                      <SelectValue placeholder="Any niche" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any niche</SelectItem>
+                      {config.niches.map(n => (
+                        <SelectItem key={n.id} value={n.id}>{n.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                    <FileText className="w-3 h-3 inline mr-0.5 -mt-0.5" /> Content Type
+                  </label>
+                  <Select value={contentType} onValueChange={setContentType}>
+                    <SelectTrigger className="h-8 text-xs" data-testid="select-content-type">
+                      <SelectValue placeholder="Any format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any format</SelectItem>
+                      {config.contentTypes.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                    <Users className="w-3 h-3 inline mr-0.5 -mt-0.5" /> Audience
+                  </label>
+                  <Select value={targetAudience} onValueChange={setTargetAudience}>
+                    <SelectTrigger className="h-8 text-xs" data-testid="select-audience">
+                      <SelectValue placeholder="Any audience" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any audience</SelectItem>
+                      {config.targetAudiences.map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                    <Zap className="w-3 h-3 inline mr-0.5 -mt-0.5" /> Tone
+                  </label>
+                  <Select value={tone} onValueChange={setTone}>
+                    <SelectTrigger className="h-8 text-xs" data-testid="select-tone">
+                      <SelectValue placeholder="Any tone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any tone</SelectItem>
+                      {config.tones.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                    <BarChart3 className="w-3 h-3 inline mr-0.5 -mt-0.5" /> Length
+                  </label>
+                  <Select value={wordCount} onValueChange={setWordCount}>
+                    <SelectTrigger className="h-8 text-xs" data-testid="select-word-count">
+                      <SelectValue placeholder="Standard" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Standard (1200-2000)</SelectItem>
+                      <SelectItem value="short">Short (800-1200)</SelectItem>
+                      <SelectItem value="long">Long-form (2000-3000)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {showAdvanced && activeFilters > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setNiche("");
+                  setContentType("");
+                  setTargetAudience("");
+                  setTone("");
+                  setWordCount("");
+                }}
+                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors mt-1"
+                data-testid="button-clear-filters"
+              >
+                Clear all filters
+              </button>
+            )}
           </form>
+
           {generating && (
             <p className="text-xs text-muted-foreground mt-2">
               AI is researching the topic and writing the article. This typically takes 30-60 seconds...

@@ -4,7 +4,7 @@ import { createHmac } from "crypto";
 import { storage } from "./storage";
 import { scrapeWebsite } from "./scraper";
 import { runAgent, generateExecutiveSummary, detectBusinessType } from "./agents";
-import { researchAndWritePost } from "./blogAgent";
+import { researchAndWritePost, suggestTrendingTopics, NICHES, CONTENT_TYPES, TARGET_AUDIENCES, TONES } from "./blogAgent";
 import { generatePDF } from "./pdf";
 import sanitizeHtml from "sanitize-html";
 import { auditRequestSchema, updateBlogPostSchema } from "@shared/schema";
@@ -456,14 +456,42 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/blog/config", verifyAdmin, async (_req, res) => {
+    return res.json({ niches: NICHES, contentTypes: CONTENT_TYPES, targetAudiences: TARGET_AUDIENCES, tones: TONES });
+  });
+
+  const validNicheIds = new Set(NICHES.map(n => n.id));
+
+  app.post("/api/admin/blog/trending", verifyAdmin, async (req, res) => {
+    try {
+      const { niche, count } = req.body;
+      if (niche && typeof niche === "string" && !validNicheIds.has(niche)) {
+        return res.status(400).json({ error: "Invalid niche" });
+      }
+      const safeCount = Math.min(Math.max(Number(count) || 8, 1), 15);
+      const topics = await suggestTrendingTopics(niche || undefined, safeCount);
+      return res.json(topics);
+    } catch (error: any) {
+      console.error("Trending topics error:", error);
+      return res.status(500).json({ error: error.message || "Failed to generate trending topics" });
+    }
+  });
+
   app.post("/api/admin/blog", verifyAdmin, async (req, res) => {
     try {
-      const { topic } = req.body;
+      const { topic, niche, contentType, targetAudience, tone, wordCount } = req.body;
       if (!topic || typeof topic !== "string" || topic.trim().length < 3) {
         return res.status(400).json({ error: "Topic is required (minimum 3 characters)" });
       }
 
-      const draft = await researchAndWritePost(topic.trim());
+      const draft = await researchAndWritePost({
+        topic: topic.trim(),
+        niche: niche || undefined,
+        contentType: contentType || undefined,
+        targetAudience: targetAudience || undefined,
+        tone: tone || undefined,
+        wordCount: wordCount || undefined,
+      });
 
       const existing = await storage.getBlogPostBySlug(draft.slug);
       if (existing) {

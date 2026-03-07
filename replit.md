@@ -52,6 +52,9 @@ Users enter their name, email, and a website URL. The app scrapes the site, then
 - HTML sanitization via sanitize-html on AI-generated and admin-edited content (XSS prevention)
 - Zod validation on PATCH route with slug uniqueness checking
 - Meta description and Open Graph tags on blog post pages (with fallback to excerpt/title)
+- Enhanced blog creation: niche targeting (10 industries), content type selection (10 formats), target audience (8 personas), tone controls (5 styles), word count options
+- AI trending topic suggestions: generates 8 trending topic ideas filtered by niche with search potential indicators
+- API: GET /api/admin/blog/config (options), POST /api/admin/blog/trending (AI suggestions)
 
 ## Homepage Sections (order)
 Hero -> Social Proof Bar -> Feature Cards -> Who This Is For -> Pricing (with trust badges) -> Testimonials -> Comparison Chart -> FAQ -> Footer (with legal/blog links) -> Recent Audits
