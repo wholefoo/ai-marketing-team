@@ -39,6 +39,40 @@ export const insertAuditSchema = createInsertSchema(audits).omit({
 export type Audit = typeof audits.$inferSelect;
 export type InsertAudit = z.infer<typeof insertAuditSchema>;
 
+export const blogPosts = pgTable("blog_posts", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  metaDescription: text("meta_description"),
+  content: text("content").notNull(),
+  excerpt: text("excerpt"),
+  category: text("category"),
+  tags: text("tags").array(),
+  status: text("status").notNull().default("draft"),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const updateBlogPostSchema = z.object({
+  title: z.string().min(1).optional(),
+  slug: z.string().min(1).optional(),
+  metaDescription: z.string().nullable().optional(),
+  content: z.string().min(1).optional(),
+  excerpt: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  status: z.enum(["draft", "published"]).optional(),
+});
+
+export type BlogPost = typeof blogPosts.$inferSelect;
+export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
+export type UpdateBlogPost = z.infer<typeof updateBlogPostSchema>;
+
 export const auditRequestSchema = z.object({
   url: z.string().url("Please enter a valid URL"),
   customerName: z.string().min(1, "Name is required"),

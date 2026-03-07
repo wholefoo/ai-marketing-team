@@ -682,6 +682,8 @@ export default function Home() {
             </a>
           </p>
           <div className="flex items-center justify-center gap-4 mb-4 text-xs">
+            <Link href="/blog" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-blog">Blog</Link>
+            <span className="text-muted-foreground/40">|</span>
             <Link href="/privacy" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-privacy">Privacy Policy</Link>
             <span className="text-muted-foreground/40">|</span>
             <Link href="/terms" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-terms">Terms of Service</Link>

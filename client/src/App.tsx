@@ -10,6 +10,8 @@ import AdminPage from "@/pages/admin";
 import PrivacyPolicy from "@/pages/privacy";
 import TermsOfService from "@/pages/terms";
 import RefundPolicy from "@/pages/refund";
+import BlogPage from "@/pages/blog";
+import BlogPostPage from "@/pages/blog-post";
 
 function Router() {
   return (
@@ -20,6 +22,8 @@ function Router() {
       <Route path="/privacy" component={PrivacyPolicy} />
       <Route path="/terms" component={TermsOfService} />
       <Route path="/refund" component={RefundPolicy} />
+      <Route path="/blog" component={BlogPage} />
+      <Route path="/blog/:slug" component={BlogPostPage} />
       <Route component={NotFound} />
     </Switch>
   );

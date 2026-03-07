@@ -40,12 +40,25 @@ Users enter their name, email, and a website URL. The app scrapes the site, then
 - Search: Filter by name, email, URL, or business name
 - Auto-refreshes every 10 seconds
 
+## Blog System
+- AI-powered blog with research and content generation
+- Admin enters a topic/pain point, AI agent researches and writes 1200-2000 word SEO-optimized article
+- Admin can edit, publish/unpublish, and delete posts
+- Public routes: /blog (listing), /blog/:slug (individual post)
+- Admin routes: tab in /admin dashboard under "Blog" tab
+- API: GET /api/blog, GET /api/blog/:slug, GET/POST/PATCH/DELETE /api/admin/blog, POST /api/admin/blog/:id/publish
+- Blog posts include BlogPosting JSON-LD schema, category badges, tags, CTA to audit
+- Sitemap dynamically includes published blog posts
+- HTML sanitization via sanitize-html on AI-generated and admin-edited content (XSS prevention)
+- Zod validation on PATCH route with slug uniqueness checking
+- Meta description and Open Graph tags on blog post pages (with fallback to excerpt/title)
+
 ## Homepage Sections (order)
-Hero -> Social Proof Bar -> Feature Cards -> Who This Is For -> Pricing (with trust badges) -> Testimonials -> Comparison Chart -> FAQ -> Footer (with legal links) -> Recent Audits
+Hero -> Social Proof Bar -> Feature Cards -> Who This Is For -> Pricing (with trust badges) -> Testimonials -> Comparison Chart -> FAQ -> Footer (with legal/blog links) -> Recent Audits
 
 ## SEO / AEO
 - robots.txt with AI crawler rules (GPTBot, ClaudeBot, PerplexityBot, etc.)
-- sitemap.xml (homepage + /privacy + /terms + /refund)
+- sitemap.xml (homepage + /blog + blog posts + /privacy + /terms + /refund)
 - JSON-LD schemas: SoftwareApplication, Organization, WebSite, FAQPage, Review (4 testimonials)
 - Canonical URL: https://aimarketaudit.com everywhere
 - Google Analytics: G-28JKW0YJV8

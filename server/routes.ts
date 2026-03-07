@@ -4,8 +4,10 @@ import { createHmac } from "crypto";
 import { storage } from "./storage";
 import { scrapeWebsite } from "./scraper";
 import { runAgent, generateExecutiveSummary, detectBusinessType } from "./agents";
+import { researchAndWritePost } from "./blogAgent";
 import { generatePDF } from "./pdf";
-import { auditRequestSchema } from "@shared/schema";
+import sanitizeHtml from "sanitize-html";
+import { auditRequestSchema, updateBlogPostSchema } from "@shared/schema";
 import type { Finding, AgentAnalysis, AuditProgress } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { db } from "./db";
@@ -80,8 +82,25 @@ export async function registerRoutes(
     );
   });
 
-  app.get("/sitemap.xml", (_req, res) => {
+  app.get("/sitemap.xml", async (_req, res) => {
     const lastmod = new Date().toISOString().split("T")[0];
+    let blogUrls = "";
+    try {
+      const posts = await storage.getAllBlogPosts("published");
+      for (const post of posts) {
+        const postDate = post.publishedAt
+          ? new Date(post.publishedAt).toISOString().split("T")[0]
+          : lastmod;
+        blogUrls += `
+  <url>
+    <loc>${siteUrl}/blog/${post.slug}</loc>
+    <lastmod>${postDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>`;
+      }
+    } catch (e) {}
+
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -90,6 +109,12 @@ export async function registerRoutes(
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+  <url>
+    <loc>${siteUrl}/blog</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>${blogUrls}
   <url>
     <loc>${siteUrl}/privacy</loc>
     <lastmod>${lastmod}</lastmod>
@@ -398,6 +423,140 @@ export async function registerRoutes(
       });
     } catch (error) {
       return res.status(500).json({ error: "Failed to fetch dashboard data" });
+    }
+  });
+
+  app.get("/api/blog", async (_req, res) => {
+    try {
+      const posts = await storage.getAllBlogPosts("published");
+      return res.json(posts);
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.get("/api/blog/:slug", async (req, res) => {
+    try {
+      const post = await storage.getBlogPostBySlug(req.params.slug);
+      if (!post || post.status !== "published") {
+        return res.status(404).json({ error: "Post not found" });
+      }
+      return res.json(post);
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to fetch blog post" });
+    }
+  });
+
+  app.get("/api/admin/blog", verifyAdmin, async (_req, res) => {
+    try {
+      const posts = await storage.getAllBlogPosts();
+      return res.json(posts);
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.post("/api/admin/blog", verifyAdmin, async (req, res) => {
+    try {
+      const { topic } = req.body;
+      if (!topic || typeof topic !== "string" || topic.trim().length < 3) {
+        return res.status(400).json({ error: "Topic is required (minimum 3 characters)" });
+      }
+
+      const draft = await researchAndWritePost(topic.trim());
+
+      const existing = await storage.getBlogPostBySlug(draft.slug);
+      if (existing) {
+        draft.slug = `${draft.slug}-${Date.now()}`;
+      }
+
+      const post = await storage.createBlogPost({
+        slug: draft.slug,
+        title: draft.title,
+        metaDescription: draft.metaDescription || null,
+        content: draft.content,
+        excerpt: draft.excerpt || null,
+        category: draft.category || null,
+        tags: draft.tags || null,
+        status: "draft",
+        publishedAt: null,
+      });
+
+      return res.json(post);
+    } catch (error: any) {
+      console.error("Blog generation error:", error);
+      return res.status(500).json({ error: error.message || "Failed to generate blog post" });
+    }
+  });
+
+  const htmlSanitizeOpts = {
+    allowedTags: ["h2", "h3", "h4", "p", "ul", "ol", "li", "strong", "em", "a", "br", "blockquote"],
+    allowedAttributes: { a: ["href", "target", "rel"] },
+    allowedSchemes: ["https", "http", "mailto"],
+  };
+
+  app.patch("/api/admin/blog/:id", verifyAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid post ID" });
+
+      const parsed = updateBlogPostSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors.map(e => e.message).join(", ") });
+      }
+
+      const updates = { ...parsed.data };
+
+      if (updates.slug) {
+        updates.slug = updates.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+        const existing = await storage.getBlogPostBySlug(updates.slug);
+        if (existing && existing.id !== id) return res.status(400).json({ error: "Slug already in use by another post" });
+      }
+
+      if (updates.content) {
+        updates.content = sanitizeHtml(updates.content, htmlSanitizeOpts);
+      }
+
+      const post = await storage.updateBlogPost(id, updates);
+      if (!post) return res.status(404).json({ error: "Post not found" });
+
+      return res.json(post);
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to update blog post" });
+    }
+  });
+
+  app.post("/api/admin/blog/:id/publish", verifyAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid post ID" });
+
+      const post = await storage.getBlogPost(id);
+      if (!post) return res.status(404).json({ error: "Post not found" });
+
+      const isPublished = post.status === "published";
+      const updated = await storage.updateBlogPost(id, {
+        status: isPublished ? "draft" : "published",
+        publishedAt: isPublished ? null : new Date(),
+      });
+
+      return res.json(updated);
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to toggle publish status" });
+    }
+  });
+
+  app.delete("/api/admin/blog/:id", verifyAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid post ID" });
+
+      const deleted = await storage.deleteBlogPost(id);
+      if (!deleted) return res.status(404).json({ error: "Post not found" });
+
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to delete blog post" });
     }
   });
 
