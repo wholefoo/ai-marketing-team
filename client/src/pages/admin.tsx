@@ -730,6 +730,7 @@ function DashboardView({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"audits" | "blog">("audits");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchDashboard();
@@ -753,6 +754,21 @@ function DashboardView({ token }: { token: string }) {
       console.error("Failed to fetch dashboard");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAudit = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Delete this audit permanently? This cannot be undone.")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/audit/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) fetchDashboard();
+    } catch {} finally {
+      setDeletingId(null);
     }
   };
 
@@ -902,12 +918,13 @@ function DashboardView({ token }: { token: string }) {
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Score</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Payment</th>
                       <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredAudits.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                        <td colSpan={7} className="py-12 text-center text-muted-foreground">
                           {searchTerm ? "No audits match your search" : "No audits yet"}
                         </td>
                       </tr>
@@ -973,6 +990,24 @@ function DashboardView({ token }: { token: string }) {
                                 year: "numeric",
                               })}
                             </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-end">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                onClick={(e) => handleDeleteAudit(audit.id, e)}
+                                disabled={deletingId === audit.id}
+                                data-testid={`button-delete-audit-${audit.id}`}
+                              >
+                                {deletingId === audit.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))

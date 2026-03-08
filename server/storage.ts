@@ -7,6 +7,7 @@ export interface IStorage {
   getAudit(id: number): Promise<Audit | undefined>;
   getAllAudits(): Promise<Audit[]>;
   updateAudit(id: number, data: Partial<InsertAudit>): Promise<Audit | undefined>;
+  deleteAudit(id: number): Promise<boolean>;
 
   createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
   getBlogPost(id: number): Promise<BlogPost | undefined>;
@@ -34,6 +35,11 @@ export class DatabaseStorage implements IStorage {
   async updateAudit(id: number, data: Partial<InsertAudit>): Promise<Audit | undefined> {
     const [updated] = await db.update(audits).set(data).where(eq(audits.id, id)).returning();
     return updated;
+  }
+
+  async deleteAudit(id: number): Promise<boolean> {
+    const [deleted] = await db.delete(audits).where(eq(audits.id, id)).returning();
+    return !!deleted;
   }
 
   async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {

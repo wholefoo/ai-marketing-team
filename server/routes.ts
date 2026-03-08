@@ -426,6 +426,18 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/admin/audit/:id", verifyAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid audit ID" });
+      const deleted = await storage.deleteAudit(id);
+      if (!deleted) return res.status(404).json({ error: "Audit not found" });
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to delete audit" });
+    }
+  });
+
   app.get("/api/blog", async (_req, res) => {
     try {
       const posts = await storage.getAllBlogPosts("published");
